@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  ListS3:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        S3Bucket: kikobr82-python-s3list
+        S3Key: lambda_function.zip
+      Handler: lambda_function.lambda_handler
+      FunctionName: ListS3
+      Role: 'arn:aws:iam::086286310458:role/service-role/S3-RO'
+      Runtime: python2.7
+
+  APIListS3:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: APIListS3
+
+  APIPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:invokeFunction'
+      FunctionName:
+        'Fn::GetAtt':
+          - ListS3
+          - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        'Fn::Join':
+          - ''
+          - - 'arn:aws:execute-api:'
+            - Ref: 'AWS::Region'
+            - ':'
+            - Ref: 'AWS::AccountId'
+            - ':'
+            - Ref: APIListS3
+            - /*/*/*
+
+  APIListS3Resource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      ParentId: !GetAtt 
+        - APIListS3
+        - RootResourceId
+      RestApiId: !Ref APIListS3
+      PathPart: '{chosen_bucket}'
+
+  APIListS3Method:
+    DependsOn: APIPermission
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      AuthorizationType: NONE
+      ResourceId: !Ref APIListS3Resource
+      RestApiId: !Ref APIListS3
+      HttpMethod: GET
+      Integration:
+        IntegrationHttpMethod: POST
+        PassthroughBehavior: WHEN_NO_TEMPLATES
+        Type: AWS
+        Uri: !Join 
+          - ''
+          - - 'arn:aws:apigateway:'
+            - !Ref 'AWS::Region'
+            - ':lambda:path/2015-03-31/functions/'
+            - !GetAtt 
+              - ListS3
+              - Arn
+            - /invocations
+        RequestTemplates:
+          application/json: >-
+            #set($inputRoot = $input.path('$')) { "chosen_bucket":
+            "$input.params('chosen_bucket')" }
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels: 
+            application/json: !Ref APIListS3Model
+  APIListS3Model:
+    Type: 'AWS::ApiGateway::Model'
+    Properties:
+      RestApiId: !Ref APIListS3
+      ContentType: application/json
+      Description: Schema for Bucket List
+      Name: BucketList
+      Schema:
+        $schema: 'http://json-schema.org/draft-04/schema#'
+        title: Bucket List
+        type: object
+        items:
+          properties:
+            callerName:
+              type: string
+
+  GreetingApiStage:
+    Type: 'AWS::ApiGateway::Stage'
+    Properties:
+      DeploymentId: !Ref APIDeployment
+      MethodSettings:
+        - DataTraceEnabled: true
+          HttpMethod: '*'
+          LoggingLevel: INFO
+          ResourcePath: /*
+      RestApiId: !Ref APIListS3
+      StageName: LATEST
+
+  APIDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn: APIListS3Method
+    Properties:
+      RestApiId: !Ref APIListS3
+      StageName: DummyStage
+
+Outputs:
+  RootUrl:
+    Description: Root URL of the API gateway
+    Value: !Join 
+      - ''
+      - - 'https://'
+        - !Ref APIListS3
+        - .execute-api.
+        - !Ref 'AWS::Region'
+        - .amazonaws.com/

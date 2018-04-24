@@ -1,0 +1,23 @@
+import boto3, requests, json
+def lambda_handler(event, context):
+    client = boto3.client('s3')
+
+    response = client.list_objects_v2(Bucket = event['chosen_bucket'])
+
+    dict = {}
+    index = 0
+    for obj in response['Contents']:
+        index = index + 1
+        dict[index] = obj['Key']
+
+    url = 'http://samples.openweathermap.org/data/2.5/weather?id=2158177&appid=a43f6a4ccd5ae1b7ef39bab3ebdfc116'
+
+    data = requests.get(url)
+    json = json.loads(data.text)
+    temp = json['main']['temp']
+
+    return {
+        'temperature' : temp
+        'objects' :  dict
+    }
+
