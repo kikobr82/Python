@@ -82,7 +82,6 @@ game_on = True
 print("\n\nStarting the BlackJack game!")
 name = input("Please, input your name to start: ")
 player = Player(name, 300)
-
 while game_on:
     game_deck = Deck()
     game_deck.shuffle()
@@ -100,23 +99,22 @@ while game_on:
     dealer_hand.add_card(game_deck.pop())
     dealer_hand.calculate_value("Dealer")
 
-    hit_or_run = input("\nYou want another card? Y/N")
-    hit_or_run = hit_or_run.upper()
-    print(hit_or_run)
-    total = 0
-    while hit_or_run != "N":
-            player_hand.add_card(game_deck.pop())
-            player_hand.calculate_value(player.player_name)
-            if player_hand.value > 21:
-                break
-            hit_or_run = input("\nYou want another card? Y/N")
-            hit_or_run = hit_or_run.upper()
     if player_hand.value <= 21:
-        dealer_hand.calculate_value("Dealer")
-        while dealer_hand.value < 21 and dealer_hand.value < player_hand.value:
-            print("Dealing another card...\n")
-            dealer_hand.add_card(game_deck.pop())
+        hit_or_run = input("\nYou want another card? Y/N")
+        hit_or_run = hit_or_run.upper()
+        while hit_or_run != "N":
+                player_hand.add_card(game_deck.pop())
+                player_hand.calculate_value(player.player_name)
+                if player_hand.value > 21:
+                    break
+                hit_or_run = input("\nYou want another card? Y/N")
+                hit_or_run = hit_or_run.upper()
+        if player_hand.value <= 21:
             dealer_hand.calculate_value("Dealer")
+            while dealer_hand.value < 21 and dealer_hand.value < player_hand.value:
+                print("Dealing another card...\n")
+                dealer_hand.add_card(game_deck.pop())
+                dealer_hand.calculate_value("Dealer")
 
     if player_hand.value > 21:
         print("{} has gone over 21 and lost!".format(player.player_name))
@@ -124,11 +122,12 @@ while game_on:
     if player_hand.value <= 21 and dealer_hand.value > 21:
         print("{} won with {} against {} of the Dealer".format(player.player_name, player_hand.value, dealer_hand.value))
         player.bankroll += bet_size
+    elif player_hand.value == dealer_hand.value:
+        print("{} and Delaer tied with {}".format(player.player_name, player_hand.value))
     elif player_hand.value <= 21 and dealer_hand.value <= 21:
         print("{} lost with {} against {} of the Dealer".format(player.player_name, player_hand.value, dealer_hand.value))
         player.bankroll -= bet_size    
-    elif player_hand.value == dealer_hand.value:
-        print("{} and Delaer tied with {}".format(player.player_name, player_hand.value))
+    
     
     check_continue = input("\nYou want to play again? Y/N: ")
     check_continue = check_continue.upper()
